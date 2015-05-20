@@ -16,6 +16,10 @@
  * @license   http://www.boxbilling.com/LICENSE.txt
  * @version   $Id$
  */
+
+const coinify_plugin_name = "BoxBilling";
+const coinify_plugin_version = "1.0";
+
 class Payment_Adapter_coinify
 {
     private $config = array();
@@ -77,7 +81,16 @@ class Payment_Adapter_coinify
 			curl_setopt_array($ch, array(
 			CURLOPT_URL => 'https://coinify.com/api/v1/invoice',
 			CURLOPT_USERPWD => $this->config['coinify_api'],
-			CURLOPT_POSTFIELDS => 'price=' . $this->moneyFormat($invoice['total'], $invoice['currency']) . '&currency=' . $invoice['currency'] . '&item=' . $title . ' - ' . $number . '&custom=' . json_encode(array('invoice_id' => $invoice_id, 'returnurl' => rawurlencode($this->config['return_url']), 'cancelurl' => rawurlencode($this->config['cancel_url']))),
+			CURLOPT_POSTFIELDS => 'price=' . $this->moneyFormat($invoice['total'], $invoice['currency']) . 
+								  '&currency=' . $invoice['currency'] . 
+								  '&item=' . $title . ' - ' . $number . 
+								  '&custom=' . json_encode(array(
+								  		'invoice_id' => $invoice_id, 
+								  		'returnurl' => rawurlencode($this->config['return_url']), 
+								  		'cancelurl' => rawurlencode($this->config['cancel_url']),
+								  		'plugin_name' => coinify_plugin_name,
+								  		'plugin_version' => coinify_plugin_version
+								  		)),
 			CURLOPT_SSL_VERIFYHOST	=> 0,
 			CURLOPT_SSL_VERIFYPEER	=> 0,
 			CURLOPT_RETURNTRANSFER => true,
