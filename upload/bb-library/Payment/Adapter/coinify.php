@@ -18,7 +18,7 @@
  */
 
 const coinify_plugin_name = "BoxBilling";
-const coinify_plugin_version = "1.1";
+const coinify_plugin_version = "1.2";
 
 class Payment_Adapter_coinify
 {
