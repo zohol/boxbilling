@@ -1,4 +1,4 @@
-![Build Status](https://bamboo.coinify.com/plugins/servlet/wittified/build-status/INT-BOXBILLING)
+![Build Status](https://build.coinify.com/status/INT-BOXBILLING)
 
 About
 =====
