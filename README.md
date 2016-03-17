@@ -3,7 +3,7 @@
 About
 =====
 + Coinify for BoxBilling.
-+ Version 1.1
++ Version 1.1.1
 
 System Requirements
 ===================
@@ -21,8 +21,8 @@ Configuration Instructions
 
 Changelog:
 ===================
-	Version 1.1 (February 10, 2016)
-	Fix bug with wrong variable name
+	Version 1.1.1 (March 17, 2016)
+	Fix API URL
 	
 	
 ### Tested with:
