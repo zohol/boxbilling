@@ -83,7 +83,7 @@ class Payment_Adapter_coinify
         if ( ! isset($_GET['status'])) {
             $ch = curl_init();
             curl_setopt_array($ch, [
-                CURLOPT_URL            => 'https://coinify.com/api/v1/invoice',
+                CURLOPT_URL            => 'https://www.coinify.com/api/v1/invoice',
                 CURLOPT_USERPWD        => $this->config['coinify_api'],
                 CURLOPT_POSTFIELDS     => 'price=' . $this->moneyFormat($invoice['total'], $invoice['currency']) .
                     '&currency=' . $invoice['currency'] .
