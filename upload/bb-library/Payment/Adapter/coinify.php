@@ -17,6 +17,9 @@
  * @version   $Id$
  */
 
+require('CoinifyAPI.php');
+require('CoinifyCallback.php');
+
 const coinify_plugin_name = "BoxBilling";
 const coinify_plugin_version = "1.1";
 
