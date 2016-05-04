@@ -19,9 +19,8 @@
 
 require('CoinifyAPI.php');
 require('CoinifyCallback.php');
-
 const coinify_plugin_name = "BoxBilling";
-const coinify_plugin_version = "1.1";
+const coinify_plugin_version = "1.3";
 
 class Payment_Adapter_coinify
 {
@@ -36,9 +35,14 @@ class Payment_Adapter_coinify
             throw new Exception('PHP Curl extension must be enabled in order to use Coinify gateway');
         }
 
-        if ( ! $this->config['coinify_api']) {
+        if ( ! $this->config['coinify_api_key']) {
             throw new Exception('Payment gateway "Coinify" is not configured properly. Please update configuration parameter "Coinify Invoice API Key" at "Configuration -> Payments".');
         }
+
+        if ( ! $this->config['coinify_api_secret']) {
+            throw new Exception('Payment gateway "Coinify" is not configured properly. Please update configuration parameter "Coinify Invoice API Secret" at "Configuration -> Payments".');
+        }
+
 
         if ( ! $this->config['coinify_secret']) {
             throw new Exception('Payment gateway "Coinify" is not configured properly. Please update configuration parameter "Coinify Secret" at "Configuration -> Payments".');
@@ -52,10 +56,16 @@ class Payment_Adapter_coinify
             'supports_subscriptions'     => false,
             'description'                => 'Enter your Coinify invoice API Key to start accepting payments by Bitcoin.',
             'form'                       => [
-                'coinify_api'    => [
+                'coinify_api_key'    => [
                     'password',
                     [
                         'label' => 'Coinify invoice API Key for Invoice'
+                    ]
+                ],
+                'coinify_api_secret'    => [
+                    'password',
+                    [
+                        'label' => 'Coinify invoice API Secret for Invoice'
                     ]
                 ],
                 'coinify_secret' => [
@@ -80,38 +90,28 @@ class Payment_Adapter_coinify
         ];
         $title = __('Payment for invoice :serie:id [:title]', $p);
         $number = $invoice['nr'];
+        $description = $title . ' - ' . $number;
 
         $form = '';
 
         if ( ! isset($_GET['status'])) {
-            $ch = curl_init();
-            curl_setopt_array($ch, [
-                CURLOPT_URL            => 'https://www.coinify.com/api/v1/invoice',
-                CURLOPT_USERPWD        => $this->config['coinify_api'],
-                CURLOPT_POSTFIELDS     => 'price=' . $this->moneyFormat($invoice['total'], $invoice['currency']) .
-                    '&currency=' . $invoice['currency'] .
-                    '&item=' . $title . ' - ' . $number .
-                    '&custom=' . json_encode([
-                        'invoice_id'     => $invoice_id,
-                        'returnurl'      => rawurlencode($this->config['return_url']),
-                        'cancelurl'      => rawurlencode($this->config['cancel_url']),
-                        'plugin_name'    => coinify_plugin_name,
-                        'plugin_version' => coinify_plugin_version
-                    ]),
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPAUTH       => CURLAUTH_BASIC
-            ]);
-            $rurl = curl_exec($ch);
-            curl_close($ch);
-
-            if (strlen($rurl) == 0) {
+            $amount = $this->moneyFormat($invoice['total']);
+            $currency = $invoice['currency'];
+            $plugin_name = coinify_plugin_name;
+            $plugin_version = coinify_plugin_version;
+            $description = $description;
+            $custom = ['invoice_id' => $invoice_id];
+            $return_url = $this->config['return_url'];
+            $cancel_url = $this->config['cancel_url'];
+            $api = new CoinifyAPI($this->config['coinify_api_key'], $this->config['coinify_api_secret']);
+            $result = $api->invoiceCreate($amount, $currency, $plugin_name, $plugin_version, $description, $custom, null, null, $return_url, $cancel_url);
+            $payment_url = $result['data']['payment_url'];
+            if (strlen($payment_url) == 0) {
                 return 'error';
             }
 
             $form = '';
-            $form .= '<form name="payment_form" action="' . $rurl . '" method="POST">' . PHP_EOL;
+            $form .= '<form name="payment_form" action="' . $payment_url . '" method="POST">' . PHP_EOL;
             $form .= '<input class="bb-button bb-button-submit" type="submit" value="Pay with Coinify" id="payment_button"/>' . PHP_EOL;
             $form .= '</form>' . PHP_EOL . PHP_EOL;
 
