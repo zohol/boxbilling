@@ -43,7 +43,6 @@ class Payment_Adapter_coinify
             throw new Exception('Payment gateway "Coinify" is not configured properly. Please update configuration parameter "Coinify Invoice API Secret" at "Configuration -> Payments".');
         }
 
-
         if ( ! $this->config['coinify_secret']) {
             throw new Exception('Payment gateway "Coinify" is not configured properly. Please update configuration parameter "Coinify Secret" at "Configuration -> Payments".');
         }
@@ -62,13 +61,13 @@ class Payment_Adapter_coinify
                         'label' => 'Coinify invoice API Key for Invoice'
                     ]
                 ],
-                'coinify_api_secret'    => [
+                'coinify_api_secret' => [
                     'password',
                     [
                         'label' => 'Coinify invoice API Secret for Invoice'
                     ]
                 ],
-                'coinify_secret' => [
+                'coinify_secret'     => [
                     'password',
                     [
                         'label' => 'Coinify Secret for callback'
@@ -81,7 +80,6 @@ class Payment_Adapter_coinify
     public function getHtml($api_admin, $invoice_id, $subscription)
     {
         $invoice = $api_admin->invoice_get(['id' => $invoice_id]);
-        $buyer = $invoice['buyer'];
 
         $p = [
             ':id'    => sprintf('%05s', $invoice['nr']),
@@ -104,7 +102,8 @@ class Payment_Adapter_coinify
             $return_url = $this->config['return_url'];
             $cancel_url = $this->config['cancel_url'];
             $api = new CoinifyAPI($this->config['coinify_api_key'], $this->config['coinify_api_secret']);
-            $result = $api->invoiceCreate($amount, $currency, $plugin_name, $plugin_version, $description, $custom, null, null, $return_url, $cancel_url);
+            $result = $api->invoiceCreate($amount, $currency, $plugin_name, $plugin_version, $description, $custom,
+                null, null, $return_url, $cancel_url);
             $payment_url = $result['data']['payment_url'];
             if (strlen($payment_url) == 0) {
                 return 'error';
@@ -162,7 +161,7 @@ class Payment_Adapter_coinify
                 'error'      => '',
                 'error_code' => '',
                 'status'     => 'processed',
-                'updated_at' => date('c'),
+                'updated_at' => date('c')
             ];
             $api_admin->invoice_transaction_update($d);
         }
