@@ -125,13 +125,15 @@ class Payment_Adapter_coinify
 
     public function processTransaction($api_admin, $id, $data, $gateway_id)
     {
-        $coinify = $_POST;
-        $hash = hash('sha512', $coinify['transaction']['hash'] . $this->config['coinify_secret']);
-
         header('HTTP/1.1 200 OK');
 
-        if ($coinify['hash'] == $hash && $coinify['status'] == 1) {
-            $invoice_id = intval($coinify["custom"]["invoice_id"]);
+        $body = file_get_contents('php://input');
+        $resp = json_decode($body, true)['data'];
+        $signature = $_SERVER['HTTP_X_COINIFY_CALLBACK_SIGNATURE'];
+        $callback = new CoinifyCallback($this->config['coinify_secret']);
+
+        if ($callback->validateCallback($body, $signature) && $resp['state'] === 'complete') {
+            $invoice_id = intval($resp["custom"]["invoice_id"]);
 
             $tx = $api_admin->invoice_transaction_get(['id' => $id]);
 
@@ -140,18 +142,19 @@ class Payment_Adapter_coinify
             }
 
             if ( ! $tx['amount']) {
-                $api_admin->invoice_transaction_update(['id' => $id, 'amount' => $coinify['fiat']["amount"]]);
+                $api_admin->invoice_transaction_update(['id' => $id, 'amount' => $resp['native']["amount"]]);
             }
 
             $invoice = $api_admin->invoice_get(['id' => $invoice_id]);
             $client_id = $invoice['client']['id'];
 
+            $transaction_hash = $resp["payments"][0]['txid'];
             $bd = [
                 'id'          => $client_id,
-                'amount'      => $coinify['fiat']["amount"],
-                'description' => 'coinify transaction ' . $coinify["transaction"]["hash"],
+                'amount'      => $resp["native"]["amount"],
+                'description' => 'coinify transaction ' . $transaction_hash,
                 'type'        => 'coinify',
-                'rel_id'      => $coinify['transaction']["hash"],
+                'rel_id'      => $transaction_hash
             ];
             $api_admin->client_balance_add_funds($bd);
             $api_admin->invoice_batch_pay_with_credits(['client_id' => $client_id]);
