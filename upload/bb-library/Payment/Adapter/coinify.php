@@ -17,8 +17,11 @@
  * @version   $Id$
  */
 
+require('CoinifyAPI.php');
+require('CoinifyCallback.php');
 const coinify_plugin_name = "BoxBilling";
-const coinify_plugin_version = "1.1";
+const coinify_plugin_version = "1.2";
+const COINIFY_SIGNATURE_HEADER_NAME = 'HTTP_X_COINIFY_CALLBACK_SIGNATURE';
 
 class Payment_Adapter_coinify
 {
@@ -33,8 +36,12 @@ class Payment_Adapter_coinify
             throw new Exception('PHP Curl extension must be enabled in order to use Coinify gateway');
         }
 
-        if ( ! $this->config['coinify_api']) {
+        if ( ! $this->config['coinify_api_key']) {
             throw new Exception('Payment gateway "Coinify" is not configured properly. Please update configuration parameter "Coinify Invoice API Key" at "Configuration -> Payments".');
+        }
+
+        if ( ! $this->config['coinify_api_secret']) {
+            throw new Exception('Payment gateway "Coinify" is not configured properly. Please update configuration parameter "Coinify Invoice API Secret" at "Configuration -> Payments".');
         }
 
         if ( ! $this->config['coinify_secret']) {
@@ -49,13 +56,19 @@ class Payment_Adapter_coinify
             'supports_subscriptions'     => false,
             'description'                => 'Enter your Coinify invoice API Key to start accepting payments by Bitcoin.',
             'form'                       => [
-                'coinify_api'    => [
+                'coinify_api_key'    => [
                     'password',
                     [
                         'label' => 'Coinify invoice API Key for Invoice'
                     ]
                 ],
-                'coinify_secret' => [
+                'coinify_api_secret' => [
+                    'password',
+                    [
+                        'label' => 'Coinify invoice API Secret for Invoice'
+                    ]
+                ],
+                'coinify_secret'     => [
                     'password',
                     [
                         'label' => 'Coinify Secret for callback'
@@ -68,7 +81,6 @@ class Payment_Adapter_coinify
     public function getHtml($api_admin, $invoice_id, $subscription)
     {
         $invoice = $api_admin->invoice_get(['id' => $invoice_id]);
-        $buyer = $invoice['buyer'];
 
         $p = [
             ':id'    => sprintf('%05s', $invoice['nr']),
@@ -77,38 +89,29 @@ class Payment_Adapter_coinify
         ];
         $title = __('Payment for invoice :serie:id [:title]', $p);
         $number = $invoice['nr'];
+        $description = $title . ' - ' . $number;
 
         $form = '';
 
         if ( ! isset($_GET['status'])) {
-            $ch = curl_init();
-            curl_setopt_array($ch, [
-                CURLOPT_URL            => 'https://coinify.com/api/v1/invoice',
-                CURLOPT_USERPWD        => $this->config['coinify_api'],
-                CURLOPT_POSTFIELDS     => 'price=' . $this->moneyFormat($invoice['total'], $invoice['currency']) .
-                    '&currency=' . $invoice['currency'] .
-                    '&item=' . $title . ' - ' . $number .
-                    '&custom=' . json_encode([
-                        'invoice_id'     => $invoice_id,
-                        'returnurl'      => rawurlencode($this->config['return_url']),
-                        'cancelurl'      => rawurlencode($this->config['cancel_url']),
-                        'plugin_name'    => coinify_plugin_name,
-                        'plugin_version' => coinify_plugin_version
-                    ]),
-                CURLOPT_SSL_VERIFYHOST => 0,
-                CURLOPT_SSL_VERIFYPEER => 0,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_HTTPAUTH       => CURLAUTH_BASIC
-            ]);
-            $rurl = curl_exec($ch);
-            curl_close($ch);
-
-            if (strlen($rurl) == 0) {
+            $amount = $this->moneyFormat($invoice['total']);
+            $currency = $invoice['currency'];
+            $plugin_name = coinify_plugin_name;
+            $plugin_version = coinify_plugin_version;
+            $description = $description;
+            $custom = ['invoice_id' => $invoice_id];
+            $return_url = $this->config['return_url'];
+            $cancel_url = $this->config['cancel_url'];
+            $api = new CoinifyAPI($this->config['coinify_api_key'], $this->config['coinify_api_secret']);
+            $result = $api->invoiceCreate($amount, $currency, $plugin_name, $plugin_version, $description, $custom,
+                null, null, $return_url, $cancel_url);
+            $payment_url = $result['data']['payment_url'];
+            if (strlen($payment_url) == 0) {
                 return 'error';
             }
 
             $form = '';
-            $form .= '<form name="payment_form" action="' . $rurl . '" method="POST">' . PHP_EOL;
+            $form .= '<form name="payment_form" action="' . $payment_url . '" method="POST">' . PHP_EOL;
             $form .= '<input class="bb-button bb-button-submit" type="submit" value="Pay with Coinify" id="payment_button"/>' . PHP_EOL;
             $form .= '</form>' . PHP_EOL . PHP_EOL;
 
@@ -123,46 +126,59 @@ class Payment_Adapter_coinify
 
     public function processTransaction($api_admin, $id, $data, $gateway_id)
     {
-        $coinify = $_POST;
-        $hash = hash('sha512', $coinify['transaction']['hash'] . $this->config['coinify_secret']);
-
         header('HTTP/1.1 200 OK');
 
-        if ($coinify['hash'] == $hash && $coinify['status'] == 1) {
-            $invoice_id = intval($coinify["custom"]["invoice_id"]);
+        $body = file_get_contents('php://input');
+        $json_body = json_decode($body, true);
 
-            $tx = $api_admin->invoice_transaction_get(['id' => $id]);
-
-            if ( ! $tx['invoice_id']) {
-                $api_admin->invoice_transaction_update(['id' => $id, 'invoice_id' => $invoice_id]);
-            }
-
-            if ( ! $tx['amount']) {
-                $api_admin->invoice_transaction_update(['id' => $id, 'amount' => $coinify['fiat']["amount"]]);
-            }
-
-            $invoice = $api_admin->invoice_get(['id' => $invoice_id]);
-            $client_id = $invoice['client']['id'];
-
-            $bd = [
-                'id'          => $client_id,
-                'amount'      => $coinify['fiat']["amount"],
-                'description' => 'coinify transaction ' . $coinify["transaction"]["hash"],
-                'type'        => 'coinify',
-                'rel_id'      => $coinify['transaction']["hash"],
-            ];
-            $api_admin->client_balance_add_funds($bd);
-            $api_admin->invoice_batch_pay_with_credits(['client_id' => $client_id]);
-
-            $d = [
-                'id'         => $id,
-                'error'      => '',
-                'error_code' => '',
-                'status'     => 'processed',
-                'updated_at' => date('c'),
-            ];
-            $api_admin->invoice_transaction_update($d);
+        if ($json_body === null) {
+            return;
         }
+
+        $resp = $json_body['data'];
+        if ( ! array_key_exists(COINIFY_SIGNATURE_HEADER_NAME, $_SERVER)) {
+            return;
+        }
+        $signature = $_SERVER[COINIFY_SIGNATURE_HEADER_NAME];
+        $callback = new CoinifyCallback($this->config['coinify_secret']);
+
+        if ( ! $callback->validateCallback($body, $signature) && $resp['state'] !== 'complete') {
+            return;
+        }
+        $invoice_id = intval($resp["custom"]["invoice_id"]);
+
+        $tx = $api_admin->invoice_transaction_get(['id' => $id]);
+
+        if ( ! $tx['invoice_id']) {
+            $api_admin->invoice_transaction_update(['id' => $id, 'invoice_id' => $invoice_id]);
+        }
+
+        if ( ! $tx['amount']) {
+            $api_admin->invoice_transaction_update(['id' => $id, 'amount' => $resp['native']["amount"]]);
+        }
+
+        $invoice = $api_admin->invoice_get(['id' => $invoice_id]);
+        $client_id = $invoice['client']['id'];
+
+        $transaction_hash = $resp["payments"][0]['txid'];
+        $bd = [
+            'id'          => $client_id,
+            'amount'      => $resp["native"]["amount"],
+            'description' => 'coinify transaction ' . $transaction_hash,
+            'type'        => 'coinify',
+            'rel_id'      => $transaction_hash
+        ];
+        $api_admin->client_balance_add_funds($bd);
+        $api_admin->invoice_batch_pay_with_credits(['client_id' => $client_id]);
+
+        $d = [
+            'id'         => $id,
+            'error'      => '',
+            'error_code' => '',
+            'status'     => 'processed',
+            'updated_at' => date('c')
+        ];
+        $api_admin->invoice_transaction_update($d);
     }
 
     private function moneyFormat($amount, $currency)
