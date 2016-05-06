@@ -23,6 +23,9 @@ Changelog:
 	Version 1.2 (May 4th, 2016)
 	Update to use Coinify PHP SDK
 	
+	Version 1.1.1 (March 17, 2016)
+	Fix API URL
+
 	Version 1.1 (February 10, 2016)
 	Fix bug with wrong variable name
 	
