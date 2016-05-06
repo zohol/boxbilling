@@ -3,7 +3,7 @@
 About
 =====
 + Coinify for BoxBilling.
-+ Version 1.1.1
++ Version 1.2
 
 System Requirements
 ===================
@@ -16,13 +16,18 @@ Configuration Instructions
     2. Go to your BoxBilling configuration. Payment Gateways -> New payment gateway -> "Coinify" click [Install]
     3. In Coinify Instant Payment Notification (https://coinify.com/merchant/ipn) Enter the link to your callback of Coinify BoxBilling Payment Module, located under settings of module.
     4. Enter a strong Secret in Coinify Secret.
-    5. In module settings "API" <- set your Coinify invoice API key, which can be generate under API Keys, Invoice.
-    6. In module settings "Secret" <- Enter your Coinify Secret.
-
+    5. Generate an API key and secret at https://www.coinify.com/merchant/api. (Click the "Generate new API key" button at the bottom of the page)
+    6. In the BoxBilling admin portal under Configuration -> Payment gateways -> Coinify set the API key, API secret that you generated in the previous step and the Coinify Secret that you generated in step 3.   
 Changelog:
 ===================
+	Version 1.2 (May 4th, 2016)
+	Update to use Coinify PHP SDK
+	
 	Version 1.1.1 (March 17, 2016)
 	Fix API URL
+
+	Version 1.1 (February 10, 2016)
+	Fix bug with wrong variable name
 	
 	
 ### Tested with:
