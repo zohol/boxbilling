@@ -20,7 +20,7 @@
 require('CoinifyAPI.php');
 require('CoinifyCallback.php');
 const coinify_plugin_name = "BoxBilling";
-const coinify_plugin_version = "1.2";
+const coinify_plugin_version = "1.2.1";
 const COINIFY_SIGNATURE_HEADER_NAME = 'HTTP_X_COINIFY_CALLBACK_SIGNATURE';
 
 class Payment_Adapter_coinify
