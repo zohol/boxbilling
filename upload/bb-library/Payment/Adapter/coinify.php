@@ -20,7 +20,7 @@
 require('CoinifyAPI.php');
 require('CoinifyCallback.php');
 const coinify_plugin_name = "BoxBilling";
-const coinify_plugin_version = "1.2";
+const coinify_plugin_version = "1.2.1";
 const COINIFY_SIGNATURE_HEADER_NAME = 'HTTP_X_COINIFY_CALLBACK_SIGNATURE';
 
 class Payment_Adapter_coinify
@@ -142,7 +142,7 @@ class Payment_Adapter_coinify
         $signature = $_SERVER[COINIFY_SIGNATURE_HEADER_NAME];
         $callback = new CoinifyCallback($this->config['coinify_secret']);
 
-        if ( ! $callback->validateCallback($body, $signature) && $resp['state'] !== 'complete') {
+        if ( ! $callback->validateCallback($body, $signature) || $resp['state'] !== 'complete') {
             return;
         }
         $invoice_id = intval($resp["custom"]["invoice_id"]);
