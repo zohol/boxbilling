@@ -3,7 +3,7 @@
 About
 =====
 + Coinify for BoxBilling.
-+ Version 1.2
++ Version 1.2.1
 
 System Requirements
 ===================
@@ -20,6 +20,9 @@ Configuration Instructions
     6. In the BoxBilling admin portal under Configuration -> Payment gateways -> Coinify set the API key, API secret that you generated in the previous step and the Coinify Secret that you generated in step 3.   
 Changelog:
 ===================
+	Version 1.2.1 (May 24th, 2016)
+	Fix bug where expired payments where set as paid.
+	
 	Version 1.2 (May 4th, 2016)
 	Update to use Coinify PHP SDK
 	
