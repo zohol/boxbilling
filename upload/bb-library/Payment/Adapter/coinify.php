@@ -142,7 +142,7 @@ class Payment_Adapter_coinify
         $signature = $_SERVER[COINIFY_SIGNATURE_HEADER_NAME];
         $callback = new CoinifyCallback($this->config['coinify_secret']);
 
-        if ( ! $callback->validateCallback($body, $signature) && $resp['state'] !== 'complete') {
+        if ( ! $callback->validateCallback($body, $signature) || $resp['state'] !== 'complete') {
             return;
         }
         $invoice_id = intval($resp["custom"]["invoice_id"]);
